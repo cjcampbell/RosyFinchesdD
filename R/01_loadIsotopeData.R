@@ -1,7 +1,14 @@
+# Load two csv files and combine -----
 
-# Find location of csv file we want to load.
-which_file <- list.files( path = wd$data, pattern = "RF-results 210119.xlsx", full.names = TRUE)
+filenames <- c("RF-results 210119.xlsx", "Rosy-Finch_Utah_Results_211006.XLSX")
+dat_loaded <- lapply( filenames, function(x) {
+  whichfiles <- list.files( path = wd$data, pattern = x , full.names = TRUE)
+  whichfile <- grep(whichfiles, pattern = "\\$", invert = T, value = T)
+  thisdat   <- readxl::read_excel(whichfile)
+  return(thisdat)
+  }
+  ) %>%
+  dplyr::bind_rows()
 
-# Load the file.
-mydata <- readxl::read_excel( which_file ) %>%
-  dplyr::mutate(ID = make.names(`Sample ID`))
+# Load the files.
+mydata <- dplyr::mutate(dat_loaded, ID = make.names(`Sample ID`))
