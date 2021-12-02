@@ -21,9 +21,9 @@ if(download_GADM == TRUE){
   # saveRDS(my_extent_aea_st, file = file.path(wd$bin, "my_extent_aea_st.rds"))
 
   # Get GADM data to country level.
-  USA <- raster::getData('GADM', path = wd$bin, country='USA', level=0)
-  CAN <- raster::getData('GADM', path = wd$bin, country='CAN', level=0)
-  MEX <- raster::getData('GADM', path = wd$bin, country='MEX', level=0)
+  USA <- raster::getData('GADM', path = wd$GADM, country='USA', level=0)
+  CAN <- raster::getData('GADM', path = wd$GADM, country='CAN', level=0)
+  MEX <- raster::getData('GADM', path = wd$GADM, country='MEX', level=0)
 
   # Combine into one polygon, convert to sf object.
   NoAm0 <- raster::bind( USA, CAN, MEX ) %>%
@@ -124,9 +124,9 @@ if(reload_isoscapes == TRUE){
 
     my_isoscapes <- mapply(
       FUN = loadAdjustIsoscapeTiff,
-      path_pattern     = c("66100", assignRpathPattern),
-      isoscape_pattern = c("predkrig.tiff$", "isoscape.tif$"),
-      sd_pattern       = c("stdkrig.tiff$" , "sd.tif$"),
+      path_pattern     = c("66100", "83507", assignRpathPattern),
+      isoscape_pattern = c(rep("predkrig.tiff$", 2) , "isoscape.tif$"),
+      sd_pattern       = c(rep("stdkrig.tiff$" , 2) , "sd.tif$"),
       MoreArgs = list(
         directory = wd$data,
         refIsoscape = refIsoscape
@@ -148,7 +148,6 @@ if(reload_isoscapes == TRUE){
   save(my_isoscapes, file = file.path(wd$bin, "my_isoscapes.RData"))
 } else message("Not reloading isoscapes, loading saved version...")
 
-
 # Load IUCN Rangemaps -----------------------------------------------------
 if(reload_IUCN_rangemaps == TRUE){
   load(file.path(wd$bin, "my_isoscapes.RData"), verbose = TRUE)
@@ -165,7 +164,9 @@ if(reload_IUCN_rangemaps == TRUE){
       st_as_sf(crs = 4326) %>%
       st_transform(crs = myCRS) %>%
       st_simplify(preserveTopology = TRUE, dTolerance = 5000) %>%
-      st_make_valid()
+      st_make_valid() %>%
+      # Add buffer.
+      st_buffer(100e3)
 
     # Convert buffered rangemaps to rasters with appropriate
     ex_rast <- my_isoscapes[[1]]$isoscape
