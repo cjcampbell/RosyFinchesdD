@@ -8,7 +8,7 @@ reload_isoscapes <- FALSE
 
 # This script assumes that there are IUCN rangemaps somewhere in the wd$iucn
 # directory.
-reload_IUCN_rangemaps <- FALSE
+reload_ebird_abundancemaps <- FALSE
 
 # Load GADM data ----------------------------------------------------------
 if(download_GADM == TRUE){
@@ -148,25 +148,42 @@ if(reload_isoscapes == TRUE){
   save(my_isoscapes, file = file.path(wd$bin, "my_isoscapes.RData"))
 } else message("Not reloading isoscapes, loading saved version...")
 
-# Load IUCN Rangemaps -----------------------------------------------------
-if(reload_IUCN_rangemaps == TRUE){
+# Load ebird abundance maps -----------------------------------------------------
+if(reload_ebird_abundancemaps == TRUE){
   load(file.path(wd$bin, "my_isoscapes.RData"), verbose = TRUE)
   NoAm_boundary_aea <- readRDS( file.path(wd$bin, "NoAm_boundary_aea.rds") )
 
   # Function to load maps, convert to sf, reproject, convert to raster objects.
   rangeMapConversion <- function(speciesCode) {
+
+    # Load eBird seasonal abundance estimates.
+    speciesCode_path <- ebirdst_download(species = speciesCode, tifs_only = TRUE, force= FALSE)
+    speciesCode_abund <- load_raster("abundance_seasonal", path = speciesCode_path)
+    speciesCode_abund2 <- raster::crop(speciesCode_abund, extent(c(-20015109, 597136.6, 0e7, 10007555)))       # Crop to approximate area of northwestern North America for quicker reprojection
+    speciesCode_aea1 <- projectRaster(speciesCode_abund2[[1]], crs = myCRS)
+    speciesCode_aea <- raster::crop(speciesCode_aea1, my_extent_aea)
+    writeRaster(speciesCode_aea, filename = file.path(wd$data, paste0(speciesCode, "_breedingSeasonalAbundance.tif")))
+
+    # Convert areas with non-zero expected abundance to points.
+    # Draw a convex hull around said points.
+    # Buffer by 100km.
+    r <- raster::raster(file.path(wd$data, paste0(speciesCode, "_breedingSeasonalAbundance.tif")))
+    r[r==0] <- NA
+    abun_df <- raster::rasterToPoints(r) %>%
+      as.data.frame()
+    abun_sf <- st_as_sf(abun_df, coords = c("x", "y"))
+    st_crs(abun_sf) <- myCRS
+    myhull <- abun_sf %>%
+      st_union() %>%
+      st_convex_hull() %>%
+      st_buffer(100e3)
+    saveRDS(myhull, file = file.path(wd$bin, paste0(speciesCode, "_bufferedConvexHull.rds")))
+
     # Load candidate rangemaps.
     # Convert to simple features object and reproject to myCRS.
-    myRange <- list.dirs(wd$iucn) %>%
-      grep(pattern = speciesCode, value = T) %>%
-      grep(pattern = "species_data", value = T) %>%
-      rgdal::readOGR(dsn = ., layer = "data_0") %>%
-      st_as_sf(crs = 4326) %>%
-      st_transform(crs = myCRS) %>%
-      st_simplify(preserveTopology = TRUE, dTolerance = 5000) %>%
-      st_make_valid() %>%
-      # Add buffer.
-      st_buffer(100e3)
+    myRange <- list.files(wd$bin, full.names = T, recursive = T) %>%
+      grep(pattern = paste0(speciesCode, "_bufferedConvexHull.rds"), value = T) %>%
+      readRDS()
 
     # Convert buffered rangemaps to rasters with appropriate
     ex_rast <- my_isoscapes[[1]]$isoscape
