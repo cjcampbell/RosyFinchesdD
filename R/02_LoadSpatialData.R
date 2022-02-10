@@ -64,88 +64,31 @@ if(reload_isoscapes == TRUE){
 
   NoAm_boundary_aea <- readRDS( file.path(wd$bin, "NoAm_boundary_aea.rds") )
 
-  # Function to extend/crop/mask by above.
-  ECM <- function(rasterLayer){
-    rasterLayer %>%
-      raster::projectRaster(., crs = myCRS) %>%
-      raster::extend( ., my_extent_aea ) %>%
-      raster::crop(   ., my_extent_aea ) %>%
-      raster::resample(., refIsoscape) %>%
-      raster::mask(   ., NoAm_boundary_aea  )
-  }
+  augsep_stack <- raster::stack(
+    file.path(wd$isoscapes,"GlobalPrecip", "d2h_08.tif"),
+    file.path(wd$isoscapes,"GlobalPrecip", "d2h_09.tif")
+  )
+  augsep_ave <- raster::calc(augsep_stack, fun = mean)
+  augsep_iso <- augsep_ave %>%
+    raster::projectRaster(., crs = myCRS) %>%
+    raster::extend( ., my_extent_aea ) %>%
+    raster::crop(   ., my_extent_aea )
+  writeRaster(augsep_iso, filename = file.path(wd$bin, "augsep_iso.tif"), overwrite = T)
 
-  # Load then write assignR's isoscape. Could call directly, but this works okay.
-  assignRpathPattern <- "assignR_d2h_world"
-  # It's called something different in v. 2... grr! Will use original version already stored locally.
+  augsep_se_stack <- raster::stack(
+    file.path(wd$isoscapes,"GlobalPrecip", "d2h_se_08.tif"),
+    file.path(wd$isoscapes,"GlobalPrecip", "d2h_se_09.tif")
+  )
+  sqrt_mse <- function(x,y) { sqrt((x^2) + (y^2)) }
+  augsep_se <- augsep_se_stack %>%
+    raster::projectRaster(., crs = myCRS) %>%
+    raster::extend( ., my_extent_aea ) %>%
+    raster::crop(   ., my_extent_aea ) %>%
+    # Calculate combined se.
+    raster::overlay(., fun = sqrt_mse)
+  writeRaster(augsep_se, filename = file.path(wd$bin, "augsep_se.tif"), overwrite = T)
 
-  # GGS_H <- assignR::d2h_lrNA
-  # if( !dir.exists(file.path(wd$data, assignRpathPattern)) ) {
-  #   dir.create(file.path(wd$data, assignRpathPattern))
-  # }
-  # writeRaster(GGS_H[[1]], overwrite = TRUE,
-  #             filename = file.path(wd$data, assignRpathPattern, "isoscape.tif"))
-  # writeRaster(GGS_H[[2]], overwrite = TRUE,
-  #             filename = file.path(wd$data, assignRpathPattern, "sd.tif"))
 
-  # Load then crop and mask environmental data rasters.
-  loadAdjustIsoscapeTiff <- function( directory, path_pattern, isoscape_pattern,
-                                      sd_pattern, refIsoscape){
-    l <- list()
-    l$directory          <- directory
-    l$path_pattern       <- path_pattern
-    l$isoscape_pattern   <- isoscape_pattern
-    l$sd_pattern         <- sd_pattern
-    l$reference_isoscape_name <- names(refIsoscape)
-
-    l$isoscape <- list.files(
-      directory, recursive = TRUE, pattern = isoscape_pattern, full.names = TRUE
-    ) %>%
-      grep(path_pattern, ., value = TRUE) %>%
-      raster::raster(.) %>%
-      ECM(.)
-
-    l$sd <- list.files(
-      directory, recursive = TRUE, pattern = sd_pattern, full.names = TRUE
-    ) %>%
-      grep(path_pattern, ., value = TRUE) %>%
-      raster::raster(.) %>%
-      ECM(.)
-
-    return(l)
-  }
-
-  suppressWarnings({
-
-    refIsoscape <- file.path(wd$data, assignRpathPattern, "isoscape.tif") %>%
-      raster::raster(.) %>%
-      raster::projectRaster(., crs = myCRS) %>%
-      raster::extend( ., my_extent_aea ) %>%
-      raster::crop(   ., my_extent_aea )
-
-    my_isoscapes <- mapply(
-      FUN = loadAdjustIsoscapeTiff,
-      path_pattern     = c("66100", "83507", assignRpathPattern),
-      isoscape_pattern = c(rep("predkrig.tiff$", 2) , "isoscape.tif$"),
-      sd_pattern       = c(rep("stdkrig.tiff$" , 2) , "sd.tif$"),
-      MoreArgs = list(
-        directory = wd$data,
-        refIsoscape = refIsoscape
-        ),
-      SIMPLIFY = FALSE
-    )
-
-  })
-
-  # Check that everything turned out okay.
-  lapply(my_isoscapes, function(i) c( i$isoscape, i$sd) ) %>%
-    unlist %>%
-    lapply(., compareRaster, x = .[[1]] ) %>%
-    unlist %>%
-    all %>%
-    {if(.!=TRUE) stop("Something is wrong! CompareRaster yeilds FALSE results.")}
-
-  # Save.
-  save(my_isoscapes, file = file.path(wd$bin, "my_isoscapes.RData"))
 } else message("Not reloading isoscapes, loading saved version...")
 
 # Load ebird abundance maps -----------------------------------------------------
