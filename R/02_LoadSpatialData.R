@@ -100,17 +100,22 @@ if(reload_ebird_abundancemaps == TRUE){
   rangeMapConversion <- function(speciesCode) {
 
     # Load eBird seasonal abundance estimates.
-    speciesCode_path <- ebirdst_download(species = speciesCode, tifs_only = TRUE, force= FALSE)
-    speciesCode_abund <- load_raster("abundance_seasonal", path = speciesCode_path)
-    speciesCode_abund2 <- raster::crop(speciesCode_abund, extent(c(-20015109, 597136.6, 0e7, 10007555)))       # Crop to approximate area of northwestern North America for quicker reprojection
-    speciesCode_aea1 <- projectRaster(speciesCode_abund2[[1]], crs = myCRS)
-    speciesCode_aea <- raster::crop(speciesCode_aea1, my_extent_aea)
-    writeRaster(speciesCode_aea, filename = file.path(wd$data, paste0(speciesCode, "_breedingSeasonalAbundance.tif")))
+    if(speciesCode == "BLRF") ebirdCode <- "bkrfin"
+    if(speciesCode == "GCRF") ebirdCode <- "gcrfin"
+    abundancePath <- file.path(wd$data, paste0(ebirdCode, "_breedingSeasonalAbundance.tif"))
+    if(!file.exists(abundancePath)) {
+      speciesCode_path <- ebirdst_download(species = ebirdCode, tifs_only = TRUE, force= FALSE)
+      speciesCode_abund <- load_raster("abundance_seasonal", path = speciesCode_path)
+      speciesCode_abund2 <- raster::crop(speciesCode_abund, extent(c(-20015109, 597136.6, 0e7, 10007555)))       # Crop to approximate area of northwestern North America for quicker reprojection
+      speciesCode_aea1 <- projectRaster(speciesCode_abund2[[1]], crs = myCRS)
+      speciesCode_aea <- raster::crop(speciesCode_aea1, my_extent_aea)
+      writeRaster(speciesCode_aea, filename = file.path(wd$data, paste0(ebirdCode, "_breedingSeasonalAbundance.tif")), overwrite = T)
+    }
 
     # Convert areas with non-zero expected abundance to points.
     # Draw a convex hull around said points.
     # Buffer by 100km.
-    r <- raster::raster(file.path(wd$data, paste0(speciesCode, "_breedingSeasonalAbundance.tif")))
+    r <- raster::raster(abundancePath)
     r[r==0] <- NA
     abun_df <- raster::rasterToPoints(r) %>%
       as.data.frame()
@@ -129,7 +134,7 @@ if(reload_ebird_abundancemaps == TRUE){
       readRDS()
 
     # Convert buffered rangemaps to rasters with appropriate
-    ex_rast <- my_isoscapes[[1]]$isoscape
+    ex_rast <- raster::raster( file.path(wd$bin, "augsep_iso.tif"))
     ex_rast[] <- 1
     range_raster <- raster::mask(
       ex_rast,
@@ -139,7 +144,7 @@ if(reload_ebird_abundancemaps == TRUE){
       raster::mask(., NoAm_boundary_aea) %>%
       raster::crop(., my_extent_aea)
 
-    saveRDS(range_raster, file = file.path(wd$bin, paste0(speciesCode, "_rangeRaster.rds")))
+    writeRaster(range_raster, filename =  file.path(wd$bin, paste0(speciesCode, "_rangeRaster.tif")), overwrite = T)
 
   }
 
