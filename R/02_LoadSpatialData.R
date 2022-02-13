@@ -62,8 +62,7 @@ if(download_GADM == TRUE){
 if(reload_isoscapes == TRUE){
   message("reloading isoscapes...")
 
-  NoAm_boundary_aea <- readRDS( file.path(wd$bin, "NoAm_boundary_aea.rds") )
-
+  # Load August/September surfaces. Combine and save.
   augsep_stack <- raster::stack(
     file.path(wd$isoscapes,"GlobalPrecip", "d2h_08.tif"),
     file.path(wd$isoscapes,"GlobalPrecip", "d2h_09.tif")
@@ -75,6 +74,7 @@ if(reload_isoscapes == TRUE){
     raster::crop(   ., my_extent_aea )
   writeRaster(augsep_iso, filename = file.path(wd$bin, "augsep_iso.tif"), overwrite = T)
 
+  # Load August/September standard error surfaces. Combine and save.
   augsep_se_stack <- raster::stack(
     file.path(wd$isoscapes,"GlobalPrecip", "d2h_se_08.tif"),
     file.path(wd$isoscapes,"GlobalPrecip", "d2h_se_09.tif")
