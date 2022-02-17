@@ -1,6 +1,6 @@
 
 # Setup -------------------------------------------------------------------
-mydata_transformed <- readRDS( file.path(wd$bin, "mydata_transformed.rds") )
+if(!exists("mydata")) source(file.path(wd$R, "01_loadIsotopeData.R"))
 augsep_feather <- raster::raster(file.path(wd$bin, "featherIsoscape.tif"))
 augsep_se <- raster::raster(file.path(wd$bin, "augsep_se.tif"))
 
@@ -8,6 +8,10 @@ augsep_se <- raster::raster(file.path(wd$bin, "augsep_se.tif"))
 BLRF_range <- raster::raster( file.path(wd$bin, "BLRF_rangeRaster.tif") )
 GCRF_range <- raster::raster( file.path(wd$bin, "GCRF_rangeRaster.tif") )
 
+# Load model residuals.
+transferFunctionResids <- readRDS(file.path(wd$bin, "transferFunctionResids.rds"))
+
+# Specify map path.
 mapPath <- file.path( wd$bin, "maps")
 if(!dir.exists(mapPath)) dir.create(mapPath)
 
@@ -17,7 +21,7 @@ lapply(c("Feather", "Claw"), function(mySampleType){
   lapply(c("BLRF", "GCRF"), function(mySpecies){
 
     message(paste0(mySampleType, "_", mySpecies))
-    df <- dplyr::filter(mydata_transformed, Species == mySpecies, sampleType == mySampleType)
+    df <- dplyr::filter(mydata, Species == mySpecies, sampleType == mySampleType)
     message(nrow(df))
 
     if(mySampleType == "Feather") {
@@ -29,10 +33,10 @@ lapply(c("Feather", "Claw"), function(mySampleType){
     }
     if(mySpecies == "BLRF") {
       myRangeMap <- BLRF_range
-      myIsoscape <- myIsoscape*0.95 - 20 + 15
+      myIsoscape <- myIsoscape
     } else if(mySpecies == "GCRF") {
       myRangeMap <- GCRF_range
-      myIsoscape <- myIsoscape*0.95 - 34 + 15
+      myIsoscape <- myIsoscape
     }
 
     if(nrow(df) > 0) {
@@ -41,7 +45,7 @@ lapply(c("Feather", "Claw"), function(mySampleType){
         myMap <- isocat::isotopeAssignmentModel(
           ID               = df[i, "ID"],
           isotopeValue     = df[i, "d2H"],
-          SD_indv          = df[i, "sdResid"],
+          SD_indv          = transferFunctionResids,
           precip_raster    = myIsoscape,
           precip_SD_raster = myIsoscape_sd,
           additionalModels = myRangeMap,
@@ -59,7 +63,7 @@ lapply(c("Feather", "Claw"), function(mySampleType){
 
 myStack <- raster::stack(list.files(mapPath, full.names = T))
 
-mydata_sf <- mydata_transformed %>%
+mydata_sf <- mydata %>%
   st_as_sf(coords = c("decimalLongitude", "decimalLatitude"), crs = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs" ) %>%
   st_transform(myCRS)
 ranges <- lapply( c("BLRF", "GCRF"), function(speciesCode){
@@ -102,9 +106,14 @@ for(i in 1:nlayers(myStack) ) {
     df <- SDMetrics::surface2df(odds)
     p <- ggplot() +
       geom_tile(df, mapping = aes(x=x,y=y,fill=value, color = value)) +
-      scale_fill_viridis_c( "Odds of origin", option = "turbo") +
-      scale_color_viridis_c("Odds of origin", option = "turbo") +
-      geom_sf(myrow, mapping = aes(), shape = 10, color = "red", size = 2) +
+      scale_fill_viridis_c( limits = c(0,1), "Odds of origin", option = "turbo") +
+      scale_color_viridis_c(limits = c(0,1), "Odds of origin", option = "turbo") +
+      geom_star(
+        data.frame(x=myrow$geometry[[1]][1], y=myrow$geometry[[1]][2]),
+        mapping = aes(x=x,y=y),
+        fill = "white", size = 3
+        ) +
+     # geom_sf(myrow, mapping = aes(), starshape = 1, color = "red", size = 2) +
       theme_minimal() +
       xlab(NULL) +
       ylab(NULL) +
@@ -134,19 +143,19 @@ maps_cropped  <- list.files(mapPath, pattern = ".tif", full.names = TRUE) %>%
   raster::stack()
 
 # Also calculate probability quantiles.
-maps_quantile_list <- lapply(1:nlayers(maps_cropped), function(i){
-  return(tryCatch(isocat::makeQuantileSurfaces(maps_cropped[[i]]), error=function(e) NULL))
+maps_quantile_stack <- lapply(1:nlayers(maps_cropped), function(i){
+  isocat::makeQuantileSurfaces(maps_cropped[[i]])
 }) %>%
   raster::stack()
 names(maps_quantile_stack) <- paste0(names(maps_cropped), "_quantile")
-writeRaster(maps_quantile_stack, filename = file.path(mypath, "quantileProbabilityMaps.grd"), overwrite = TRUE)
+writeRaster(maps_quantile_stack, filename = file.path(wd$bin, "quantileProbabilityMaps.grd"), overwrite = TRUE)
 
 # And odds ratios.
 maps_odds_stack <- lapply(1:nlayers(maps_cropped), function(i){
-  return(tryCatch(isocat::makeOddsSurfaces(maps_cropped[[i]]), error=function(e) NULL))
+  isocat::makeOddsSurfaces(maps_cropped[[i]])
 }) %>% raster::stack()
 names(maps_odds_stack) <- paste0(names(maps_cropped), "_OR")
-writeRaster(maps_odds_stack, filename = file.path(mypath, "ORProbabilityMaps.grd"), overwrite = TRUE)
+writeRaster(maps_odds_stack, filename = file.path(wd$bin, "ORProbabilityMaps.grd"), overwrite = TRUE)
 
 
 # Combine, make dataframe. -----------

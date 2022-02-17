@@ -126,6 +126,18 @@ params <- list(slope=slope, intercept=intercept)
 saveRDS(params, file = file.path(wd$bin, "transferFunctionParams.rds"))
 
 
+
+# Estimate sd  ------------------------------------------------------------
+resids <- assignR_Hobson3 %>%
+  dplyr::filter(Foraging.Substrate == "Ground", Migratory == "Short distance") %>%
+  lm(d2H.1~iso_GS, data = .) %>%
+  {summary(.)$residuals}
+
+sd_resids <- sd(resids)
+saveRDS(sd_resids, file = file.path(wd$bin, "transferFunctionResids.rds"))
+hist(resids)
+
+
 # Transform isoscape ------------------------------------------------------
 precipToFeather <- function(x) {
   stopifnot(exists("params"))
