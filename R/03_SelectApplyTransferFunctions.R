@@ -1,28 +1,137 @@
 # Load  ----------------------------------------------------------
-
-if(!exists("my_isoscapes")) load(file.path(wd$bin, "my_isoscapes.RData"), verbose = TRUE)
 if(!exists("mydata")) source(file.path(wd$R, "01_loadIsotopedata.R"))
 
+library(assignR)
+if(is.null(wd$isoscapes)) warning("Assign wd$isoscapes as the location of the
+                                    isoscapes on the local computer.")
 
-# Apply transfer functions, define molt status  ---------------------------------
+# Load global isoscapes. -------------------------------------------------------
+iso_augsep <-raster::raster(file.path(wd$bin, "augsep_iso.tif"))
+iso_GS <- raster::raster(
+  file.path(wd$isoscapes, "GlobalPrecipGS", "d2h_GS.tif")
+)
 
-# FUNCTION currently from Hobson 2021
-# THIS IS A PLACEHOLDER AND ONLY WORKS FOR FEATHERS
-# d2Hf = 0.95*d2Hp - 27.09
-# MADE UP SD
 
-mydata_transformed <- mydata %>%
-  dplyr::mutate_if(is.factor, as.character) %>%
-  dplyr::mutate(
-    dDprecip =  (d2H - (-27.09)) / 0.95,
-    sdResid = 5
+# Load assignR known-origin dataset. -------------------------------------------
+assignR_Hobson <- assignR::knownOrig$samples %>%
+  dplyr::filter(Dataset_ID == 2) %>%
+  dplyr::inner_join(., as.data.frame(assignR::knownOrig$sites), by = "Site_ID") %>%
+  dplyr::inner_join(., as.data.frame(assignR::knownOrig$sources), by = "Dataset_ID")
+
+# Use refTrans function to translate to VSMOW reference scale.
+assignR_Hobson_VSMOW <- pbmcapply::pbmclapply( 1:nrow(assignR_Hobson), mc.cores = 3, function(i) {
+  df <- assignR_Hobson[i, ]
+  s <- data.frame("d2H" = df$d2H, "d2H.sd" = df$d2H.sd, "d2H_cal" = df$H_cal)
+  df1 <- assignR::refTrans(s)
+  out <- data.frame(df, df1$data)
+  return(out)
+}) %>% bind_rows()
+
+# Plot changes
+assignR_Hobson_VSMOW %>%
+  ggplot() +
+  geom_point(aes(x=d2H, y = d2H.1)) +
+  geom_abline(slope=1,intercept = 0, color = "blue")
+
+# Find dPrecip values at sample sites ------------------------------------------
+assignR_Hobson_sf <- assignR_Hobson_VSMOW %>%
+  st_as_sf(coords = c("Longitude", "Latitude"), crs = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
+
+assignR_Hobson2 <- dplyr::mutate(
+  assignR_Hobson_VSMOW,
+  iso_augsep = raster::extract(iso_augsep, assignR_Hobson_sf) ,
+  iso_GS = raster::extract(iso_GS, assignR_Hobson_sf)
+)
+
+# Exploratory plots.
+assignR_Hobson2 %>%
+  ggplot() +
+  geom_point(aes(x=iso_augsep, y = d2H.1))
+assignR_Hobson2 %>%
+  ggplot() +
+  geom_point(aes(x=iso_GS, y = d2H.1))
+
+
+# Bring in guild predictors from Hobson 2012 SI --------------------------------
+
+Hobson2012_SI1 <- read.csv(file.path(wd$data, "Hobson2012_SI1.csv") ) %>%
+  dplyr::filter(!is.na(Common.Name), Common.Name != "") %>%
+  dplyr::select(-n)
+
+# Find names without a perfect match.
+unique(assignR_Hobson2$Taxon)[!unique(assignR_Hobson2$Taxon) %in% Hobson2012_SI1$Scientific.Name]
+unique(Hobson2012_SI1$Scientific.Name)[!unique(Hobson2012_SI1$Scientific.Name) %in% assignR_Hobson2$Taxon]
+
+key <- data.frame(
+  assignR_name = c(
+    "Setophaga coronata auduboni", # Subspecies prevents perfect match
+    "Junco hyemalis oregonus",     # Subspecies prevents perfect match
+    "Vermivora cyanoptera",        # Synonym 'Vermivora pinus'
+    "Poecile carolinensis"         # SI has a typo
+  ),
+  Hobson2012_name = c(
+    "Setophaga coronata",
+    "Junco hyemalis",
+    "Vermivora pinus",
+    "Poecile carlinensis"
   )
+)
+# Loggerheaded shrike in assignR ("Lanius ludovicianus") were not in the original
+# Hobson 2012 data, though they were pooled in with Hobson-sourced data
+# when assembling the assignR dataset.
+#
+# There are 30 tree swallows ("Tachycineta bicolor") that were included in the
+# Hobson 2012 analyses that were not in the assignR dataset.
 
-saveRDS(mydata_transformed, file = file.path(wd$bin, "mydata_transformed.rds"))
+
+assignR_Hobson3 <- assignR_Hobson2 %>%
+  dplyr::filter(Taxon != "Lanius ludovicianus") %>%
+  left_join(., key, by = c("Taxon" = "assignR_name")) %>%
+  dplyr::mutate(Hobson2012_name = case_when(
+    is.na(Hobson2012_name) ~ Taxon,
+    TRUE ~ Hobson2012_name
+  )) %>%
+  left_join(., Hobson2012_SI1, by = c("Hobson2012_name" = "Scientific.Name")) %>%
+  dplyr::mutate(Foraging.Substrate = factor(Foraging.Substrate, levels = c("Non-Ground", "Ground")))
+
+# Fit mixed models as in Hobson 2012. ------------------------------------------
+
+m1 <- lm(d2H.1~iso_GS + Foraging.Substrate + Migratory + Foraging.Substrate*Migratory,
+     data = assignR_Hobson3 )
+summary(m1)
+AIC(m1)
+(a <- sjPlot::plot_model(m1, type = "pred", terms = c("iso_GS", "Foraging.Substrate", "Migratory")))
+
+# ForagingSubstrateGround == 1
+# MigratoryShort distance == 1
+# Foraging.SubstrateGround:MigratoryShort distance == 1
+inter <- coef(m1)[
+  names(coef(m1)) %in% c(
+    "(Intercept)",
+    "Foraging.SubstrateGround",
+    "MigratoryShort distance",
+    "Foraging.SubstrateGround:MigratoryShort distance")
+] %>%
+  sum()
+slope <- coef(m1)[2]
+groundShort <- assignR_Hobson3 %>%
+  dplyr::filter(Foraging.Substrate == "Ground", Migratory == "Short distance")
+groundShort %>%
+  ggplot() +
+  aes(x=iso_GS, y=d2H.1, color=Migratory, shape = Foraging.Substrate) +
+  geom_point() +
+  geom_abline(slope = slope, intercept = intercept)
+
+params <- list(slope=slope, intercept=intercept)
+saveRDS(params, file = file.path(wd$bin, "transferFunctionParams.rds"))
 
 
-# Pull out selected isoscape ----------------------------------------------
+# Transform isoscape ------------------------------------------------------
+precipToFeather <- function(x) {
+  stopifnot(exists("params"))
+  y <- ( x*params$slope) + params$intercept
+  return(y)
+}
 
-bestFitIso <- my_isoscapes[[sma_selected$isoscape]]
-save(bestFitIso, file = file.path(wd$bin, "bestFitIso.rdata"))
-
+featherIso <- raster::calc(iso_augsep, fun =  precipToFeather)
+writeRaster(featherIso, filename = file.path(wd$bin, "featherIsoscape.tif"))
