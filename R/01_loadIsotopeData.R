@@ -63,5 +63,6 @@ locationData <- data.frame(
 # Combine --------
 mydata <- full_join(dat_loaded, dat_meta) %>%
   dplyr::mutate(ID = make.names(`Sample ID`)  ) %>%
-  dplyr::left_join(.,locationData)
+  dplyr::left_join(.,locationData) %>%
+  dplyr::filter(!is.na(d2H))
 
