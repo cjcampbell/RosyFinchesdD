@@ -105,7 +105,7 @@ AIC(m1)
 # ForagingSubstrateGround == 1
 # MigratoryShort distance == 1
 # Foraging.SubstrateGround:MigratoryShort distance == 1
-inter <- coef(m1)[
+intercept <- coef(m1)[
   names(coef(m1)) %in% c(
     "(Intercept)",
     "Foraging.SubstrateGround",
@@ -127,15 +127,19 @@ saveRDS(params, file = file.path(wd$bin, "transferFunctionParams.rds"))
 
 
 
-# Estimate sd  ------------------------------------------------------------
-resids <- assignR_Hobson3 %>%
-  dplyr::filter(Foraging.Substrate == "Ground", Migratory == "Short distance") %>%
-  lm(d2H.1~iso_GS, data = .) %>%
-  {summary(.)$residuals}
-
-sd_resids <- sd(resids)
-saveRDS(sd_resids, file = file.path(wd$bin, "transferFunctionResids.rds"))
+# Estimate sd  of resids------------------------------------------------------------
+calculateResidual <- function(x,y, slope = slope, intercept = intercept) {
+  yhat = (x*slope)+intercept
+  resid = y-yhat
+  return(resid)
+}
+resids <- mapply(FUN = calculateResidual, x = groundShort$iso_GS, y = groundShort$d2H.1,
+       MoreArgs = list( slope = slope, intercept = intercept)
+)
 hist(resids)
+sd_resids <- sd(resids)
+
+saveRDS(sd_resids, file = file.path(wd$bin, "transferFunctionResids.rds"))
 
 
 # Transform isoscape ------------------------------------------------------
