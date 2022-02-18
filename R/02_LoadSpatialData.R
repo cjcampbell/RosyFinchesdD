@@ -32,9 +32,9 @@ if(download_GADM == TRUE){
     st_simplify(preserveTopology = FALSE, dTolerance = 5e3)
 
   # Remove water bodies.
-  USA_2 <- raster::getData('GADM', path = wd$bin, country='USA', level=2)
-  CAN_2 <- raster::getData('GADM', path = wd$bin, country='CAN', level=2)
-  MEX_2 <- raster::getData('GADM', path = wd$bin, country='MEX', level=2)
+  USA_2 <- raster::getData('GADM', path = wd$GADM, country='USA', level=2)
+  CAN_2 <- raster::getData('GADM', path = wd$GADM, country='CAN', level=2)
+  MEX_2 <- raster::getData('GADM', path = wd$GADM, country='MEX', level=2)
 
   waterbodies <- lapply(
     list(USA_2,MEX_2,CAN_2),
@@ -53,6 +53,16 @@ if(download_GADM == TRUE){
     rmapshaper::ms_erase(., waterbodies)
 
   saveRDS(NoAm_boundary_aea, file = file.path(wd$bin, "NoAm_boundary_aea.rds"))
+
+  # Also create maps of USA and CAN states for detailed plotting.
+  USA_1 <- raster::getData('GADM', path = wd$GADM, country='USA', level=1)
+  CAN_1 <- raster::getData('GADM', path = wd$GADM, country='CAN', level=1)
+  states <- raster::bind( USA_1, CAN_1) %>%
+    sf::st_as_sf(.) %>%
+    st_transform(crs = myCRS) %>%
+    st_crop(., my_extent_aea) %>%
+    st_simplify(preserveTopology = FALSE, dTolerance = 1e3)
+  saveRDS(states, file = file.path(wd$bin, "states.rds"))
 
 } else message("Not redownloading GADM Data...")
 

@@ -78,6 +78,8 @@ ranges <- lapply( c("BLRF", "GCRF"), function(speciesCode){
     dplyr::mutate(SEASONAL = factor(SEASONAL))
 })
 
+if(!exists("states")) states <- readRDS(file.path(wd$bin, "states.rds"))
+
 for(i in 1:nlayers(myStack) ) {
   print(paste0(i, " of ", nlayers(myStack)))
   myrow <- mydata_sf[mydata_sf$ID == names(myStack[[i]]) , ]
@@ -103,6 +105,11 @@ for(i in 1:nlayers(myStack) ) {
       lowlight <- NA
     }
 
+    myxlim <- c(min(df$x) - 2e5, max(df$x) + 3e5)
+    myylim <- c(min(df$y) - 1e5, max(df$y) + 1e5)
+    boxmin <- myxlim[2] - ((myxlim[2]-myxlim[1]) * 0.28)
+    boxmax <- myxlim[2] +7e4
+
     df <- SDMetrics::surface2df(odds)
     p <- ggplot() +
       geom_tile(df, mapping = aes(x=x,y=y,fill=value, color = value)) +
@@ -113,11 +120,37 @@ for(i in 1:nlayers(myStack) ) {
         mapping = aes(x=x,y=y),
         fill = "white", size = 3
         ) +
-     # geom_sf(myrow, mapping = aes(), starshape = 1, color = "red", size = 2) +
+      geom_sf(states, mapping = aes(), fill = NA, size = 0.25) +
       theme_minimal() +
       xlab(NULL) +
       ylab(NULL) +
-      ggtitle(paste0(myrow$Species, " ", myrow$ID))
+      ggtitle(paste0(myrow$Species, " ", myrow$ID)) +
+      theme(
+        panel.grid = element_blank(),
+        legend.direction = "horizontal",
+        legend.position = c(0.86,0.11),
+        legend.title.align = c(0.5),
+        legend.key.width = unit(0.8, "cm")
+      ) +
+      guides(
+        color = guide_colorbar(title.position = "top"),
+        fill  = guide_colorbar(title.position = "top")
+        )  +
+      geom_rect(
+        fill = "white", color = "grey20",
+        data = data.frame(
+          xmin = boxmin,
+          xmax = boxmax,
+          ymin = myylim[1]-6e4,
+          ymax = myylim[1] + 2e5
+        ),
+        mapping = aes(xmin=xmin,xmax=xmax,ymin=ymin,ymax=ymax)
+      ) +
+      ggspatial::annotation_scale(
+        width_hint = 0.22,
+        bar_cols = c("grey50", NA),
+        location="br"
+      )
 
     if(!is.na(highlight)) {
       p <- p + geom_sf(highlight, mapping = aes(), fill = NA, color = "black", size = 1)
@@ -125,13 +158,9 @@ for(i in 1:nlayers(myStack) ) {
     if(!is.na(lowlight)) {
       p <- p + geom_sf(lowlight, mapping = aes(), fill = "grey50", alpha = 0.5, color = NA, size = 1)
     }
-    p <- p +
-       coord_sf(
-        xlim = c(min(df$x) - 3e5, max(df$x) + 3e5),
-        ylim = c(min(df$y) - 3e5, max(df$y) + 3e5)
-       )
+    p <- p + coord_sf(xlim = myxlim, ylim = myylim)
 
-    ggsave(p, file = file.path(wd$out, paste0(myrow$ID, ".png")))
+    ggsave(p, file = file.path(wd$out, paste0(myrow$ID, ".png")), width = 8)
   }
 }
 
