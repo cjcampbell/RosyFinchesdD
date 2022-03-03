@@ -18,8 +18,8 @@ Scripts used to read, tidy, and standardize data and run analyses.
 | -----------                            | ----------- |
 | 00_Setup.R                             | Set up workspace, define extents, CRS |
 | 01_loadIsotopeData.R                   | Import data, combine with metadata, tidy |
-| 02_LoadSpatialData.R                   | Load administrative area, create precipitation isoscape, and create range map datasets |
-| 03_FitApplyTransferFunctions.R         | Partially reproducing the results of Hobson 2012 to generate a bird keratin transfer function for migratory birds. Apply to create keratin isoscape |
+| 02_LoadSpatialData.R                   | Load administrative area, create  isoscapes, and create range map datasets |
+| 03_FitApplyTransferFunctions.R         | Partially reproducing the results of Hobson 2012 to generate a bird keratin transfer function for migratory birds. Apply to create keratin isoscapes |
 | 04_MakeProbabilityOfOriginMaps.R       | Create probability-of-origin maps for each sample, generate plots for each sample origin |
 
 ## Session Info
