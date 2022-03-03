@@ -72,22 +72,48 @@ lapply(c("Feather", "Claw"), function(mySampleType){
 # Load maps.
 maps_cropped  <- list.files(mapPath, pattern = ".tif", full.names = TRUE) %>%
   raster::stack()
-writeRaster(maps_cropped, filename = file.path(wd$out, "normalizedProbabilityMaps.grd"), overwrite = TRUE)
+#writeRaster(maps_cropped, filename = file.path(wd$out, "normalizedProbabilityMaps.grd"), overwrite = TRUE)
 
-# Also calculate probability quantiles.
-maps_quantile_stack <- lapply(1:nlayers(maps_cropped), function(i){
-  isocat::makeQuantileSurfaces(maps_cropped[[i]])
-}) %>%
-  raster::stack()
-names(maps_quantile_stack) <- paste0(names(maps_cropped), "_quantile")
-writeRaster(maps_quantile_stack, filename = file.path(wd$bin, "quantileProbabilityMaps.grd"), overwrite = TRUE)
+writeRaster(
+  maps_cropped[[unlist(mydata[mydata$Species == "BLRF", "ID"])]],
+  filename = file.path(wd$out, "BLRF_normalizedProbabilityMaps.grd"),
+  overwrite = T)
+writeRaster(
+  maps_cropped[[unlist(mydata[mydata$Species == "GCRF", "ID"])]],
+  filename = file.path(wd$out, "GCRF_normalizedProbabilityMaps.grd"),
+  overwrite = T)
 
-# And odds ratios.
+# # Also calculate probability quantiles.
+# maps_quantile_stack <- lapply(1:nlayers(maps_cropped), function(i){
+#   isocat::makeQuantileSurfaces(maps_cropped[[i]])
+# }) %>%
+#   raster::stack()
+# names(maps_quantile_stack) <- paste0(names(maps_cropped), "_quantile")
+# #writeRaster(maps_quantile_stack, filename = file.path(wd$bin, "quantileProbabilityMaps.grd"), overwrite = TRUE)
+# writeRaster(
+#   maps_quantile_stack[[unlist(mydata[mydata$Species == "BLRF", "ID"])]],
+#   filename = file.path(wd$out, "BLRF_quantileProbabilityMaps.grd"),
+#   overwrite = T)
+# writeRaster(
+#   maps_quantile_stack[[unlist(mydata[mydata$Species == "GCRF", "ID"])]],
+#   filename = file.path(wd$out, "GCRF_quantileProbabilityMaps.grd"),
+#   overwrite = T)
+
+# Make odds ratios.
 maps_odds_stack <- lapply(1:nlayers(maps_cropped), function(i){
   isocat::makeOddsSurfaces(maps_cropped[[i]])
 }) %>% raster::stack()
 names(maps_odds_stack) <- paste0(names(maps_cropped), "_OR")
-writeRaster(maps_odds_stack, filename = file.path(wd$out, "OddsProbabilityMaps.grd"), overwrite = TRUE)
+#writeRaster(maps_odds_stack, filename = file.path(wd$out, "OddsProbabilityMaps.grd"), overwrite = TRUE)
+writeRaster(
+  maps_odds_stack[[paste0(unlist(mydata[mydata$Species == "BLRF", "ID"]), "_OR")]],
+  filename = file.path(wd$out, "BLRF_oddsProbabilityMaps.grd"),
+  overwrite = T)
+writeRaster(
+  mmaps_odds_stack[[paste0(unlist(mydata[mydata$Species == "GCRF", "ID"]), "_OR")]],
+  filename = file.path(wd$out, "GCRF_oddsProbabilityMaps.grd"),
+  overwrite = T)
+
 
 
 # Combine, fortify into dataframe. -----------
