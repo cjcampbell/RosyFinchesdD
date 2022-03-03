@@ -22,6 +22,15 @@ Scripts used to read, tidy, and standardize data and run analyses.
 | 03_FitApplyTransferFunctions.R         | Partially reproducing the results of Hobson 2012 to generate a bird keratin transfer function for migratory birds. Apply to create keratin isoscapes |
 | 04_MakeProbabilityOfOriginMaps.R       | Create probability-of-origin maps for each sample, generate plots for each sample origin |
 
+### /figs/
+Maps (png files) by sample and individual. Three types of maps are present:
+| File suffix                                 | Description |
+| -----------                                 | ----------- | 
+| `sample `  _odds.png                    | Probability-of-origin surface (odds probability) for each sample       |
+| `sample`  _2t1_odds.png                | Binary probability-of-origin surface (odds probability), thresholded at 2:1 odds, for each sample       |
+| `individual` _ claw_feather.png        | Combined thresholded surface showing likely origins based on claw and feather for each `individual` sampled with both methods|
+
+
 ## Session Info
 All analyses were conducted with the following configuration:
 
