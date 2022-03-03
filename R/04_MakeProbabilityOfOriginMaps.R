@@ -110,7 +110,7 @@ writeRaster(
   filename = file.path(wd$out, "BLRF_oddsProbabilityMaps.grd"),
   overwrite = T)
 writeRaster(
-  mmaps_odds_stack[[paste0(unlist(mydata[mydata$Species == "GCRF", "ID"]), "_OR")]],
+  maps_odds_stack[[paste0(unlist(mydata[mydata$Species == "GCRF", "ID"]), "_OR")]],
   filename = file.path(wd$out, "GCRF_oddsProbabilityMaps.grd"),
   overwrite = T)
 

@@ -6,6 +6,9 @@ data/
 bin/
 docs/
 .Rprofile
-figs/
 out/continuous_maps/
 test/
+out/OddsProbabilityMaps*
+out/normalizedProbabilityMaps*
+R/test*
+
