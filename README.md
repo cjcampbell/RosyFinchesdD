@@ -3,6 +3,15 @@
 Code and output of an analysis investigating the feather and claw origins of two species of rosy-finch using stable hydrogen isotope analysis.
 
 ## This repository contains:
+### /out/
+Species-specific raster files with probability-of-origin maps.
+| Files                                   | Description |
+| -----------                            | ----------- |
+| BLRF_normalisedProbabilityMaps.grd,<br>BLRF_normalisedProbabilityMaps.gri  | Probability-of-origin maps from BLRF samples, normalized so probability of origin in focal region sums to 1.
+| GCRF_normalisedProbabilityMaps.grd,<br>GCRF_normalisedProbabilityMaps.gri  | Probability-of-origin maps from GCRF samples, normalized so probability of origin in focal region sums to 1.
+| BLRF_oddsProbabilityMaps.grd,<br>BLRF_oddsProbabilityMaps.gri  | Probability-of-origin maps from BLRF samples, transformed to relativized odds-of-origin values.
+| GCRF_oddsProbabilityMaps.grd,<br>GCRF_oddsProbabilityMaps.gri  | Probability-of-origin maps from GCRF samples, transformed to relativized odds-of-origin values.
+
 ### /R/
 Scripts used to read, tidy, and standardize data and run analyses.
 | Script                                 | Description |
@@ -12,7 +21,6 @@ Scripts used to read, tidy, and standardize data and run analyses.
 | 02_LoadSpatialData.R                   | Load administrative area, create precipitation isoscape, and create range map datasets |
 | 03_FitApplyTransferFunctions.R         | Partially reproducing the results of Hobson 2012 to generate a bird keratin transfer function for migratory birds. Apply to create keratin isoscape |
 | 04_MakeProbabilityOfOriginMaps.R       | Create probability-of-origin maps for each sample, generate plots for each sample origin |
-
 
 ## Session Info
 All analyses were conducted with the following configuration:
