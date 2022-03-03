@@ -70,34 +70,55 @@ if(download_GADM == TRUE){
 # Load isoscapes ----------------------------------------------------------
 
 if(reload_isoscapes == TRUE){
+
   message("reloading isoscapes...")
 
-  # Load August/September surfaces. Combine and save.
-  augsep_stack <- raster::stack(
-    file.path(wd$isoscapes,"GlobalPrecip", "d2h_08.tif"),
-    file.path(wd$isoscapes,"GlobalPrecip", "d2h_09.tif")
-  )
-  augsep_ave <- raster::calc(augsep_stack, fun = mean)
-  augsep_iso <- augsep_ave %>%
-    raster::projectRaster(., crs = myCRS) %>%
-    raster::extend( ., my_extent_aea ) %>%
-    raster::crop(   ., my_extent_aea )
-  writeRaster(augsep_iso, filename = file.path(wd$bin, "augsep_iso.tif"), overwrite = T)
+  # This code requires an utd version of isocat for the `makeMultiMonthIsoscape` function.
+  # Sys.unsetenv("GITHUB_PAT")
+  # devtools::install_github("cjcampbell/isocat", upgrade = "never")
 
-  # Load August/September standard error surfaces. Combine and save.
-  augsep_se_stack <- raster::stack(
-    file.path(wd$isoscapes,"GlobalPrecip", "d2h_se_08.tif"),
-    file.path(wd$isoscapes,"GlobalPrecip", "d2h_se_09.tif")
-  )
-  sqrt_mse <- function(x,y) { sqrt((x^2) + (y^2)) }
-  augsep_se <- augsep_se_stack %>%
-    raster::projectRaster(., crs = myCRS) %>%
-    raster::extend( ., my_extent_aea ) %>%
-    raster::crop(   ., my_extent_aea ) %>%
-    # Calculate combined se.
-    raster::overlay(., fun = sqrt_mse)
-  writeRaster(augsep_se, filename = file.path(wd$bin, "augsep_se.tif"), overwrite = T)
+  projectExtendCropRaster <- function(rast) {
+   rast %>%
+      raster::projectRaster(., crs = myCRS) %>%
+      raster::extend( ., my_extent_aea ) %>%
+      raster::crop(   ., my_extent_aea )
+  }
 
+  makeSubsettedSurfaces <- function(monthVector, rastName) {
+    rast_stack <- raster::stack()
+    rast_se_stack <- raster::stack()
+    rast_precip <- raster::stack()
+    for(i in monthVector) {
+      if(i < 10) i <- paste0("0", i)
+      rast_stack <- raster::stack(rast_stack, file.path(wd$isoscapes,"GlobalPrecip", paste0("d2h_", i, ".tif")))
+      rast_se_stack <- raster::stack(rast_se_stack, file.path(wd$isoscapes,"GlobalPrecip", paste0("d2h_se_", i, ".tif")))
+      rast_precip <- raster::stack(rast_precip, file.path(wd$precip, paste0("wc2.1_2.5m_prec_", i, ".tif")))
+      }
+    rast_wgs84 <- isocat::makeMultiMonthIsoscape(rast_stack, rast_se_stack, rast_precip)
+    outrast <- lapply(rast_wgs84, projectExtendCropRaster)
+    writeRaster(outrast[[1]], filename = file.path(wd$bin, paste0("iso_", rastName, ".tif")), overwrite = T)
+    writeRaster(outrast[[2]], filename = file.path(wd$bin, paste0("iso_se_", rastName, ".tif")), overwrite = T)
+  }
+
+  # August-September surfaces
+  makeSubsettedSurfaces(monthVector = 8:9, rastName = "augsep")
+
+  # Sep-Dec surfaces
+  makeSubsettedSurfaces(monthVector = 9:12, rastName = "sepdec")
+
+  # Oct-Jan
+  makeSubsettedSurfaces(monthVector = c(10:12,1), rastName = "octjan")
+
+  # Nov-Feb
+  makeSubsettedSurfaces(monthVector = c(11:12,1:2), rastName = "novfeb")
+
+  # ## Load mean growing season isoscape and error surfaces. Combine and save. ----
+  # iso_GS <- raster::raster(file.path(wd$isoscapes, "GlobalPrecipGS", "d2h_GS.tif")) %>%
+  #   projectExtendCropRaster()
+  # writeRaster(iso_GS, filename = file.path(wd$bin, "iso_GS.tif"), overwrite = T)
+  # iso_GS_se <- raster::raster(file.path(wd$isoscapes, "GlobalPrecipGS", "d2h_se_GS.tif"))%>%
+  #   projectExtendCropRaster()
+  # writeRaster(iso_GS_se, filename = file.path(wd$bin, "iso_GS_se.tif"), overwrite = T)
 
 } else message("Not reloading isoscapes, loading saved version...")
 
@@ -134,7 +155,7 @@ if(reload_ebird_abundancemaps == TRUE){
     myhull <- abun_sf %>%
       st_union() %>%
       st_convex_hull() %>%
-      st_buffer(100e3)
+      st_buffer(200e3)
     saveRDS(myhull, file = file.path(wd$bin, paste0(speciesCode, "_bufferedConvexHull.rds")))
 
     # Load candidate rangemaps.

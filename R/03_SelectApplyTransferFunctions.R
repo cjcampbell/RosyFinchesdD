@@ -6,11 +6,7 @@ if(is.null(wd$isoscapes)) warning("Assign wd$isoscapes as the location of the
                                     isoscapes on the local computer.")
 
 # Load global isoscapes. -------------------------------------------------------
-iso_augsep <-raster::raster(file.path(wd$bin, "augsep_iso.tif"))
-iso_GS <- raster::raster(
-  file.path(wd$isoscapes, "GlobalPrecipGS", "d2h_GS.tif")
-)
-
+iso_GS_WGS84     <- raster::raster( file.path(wd$isoscapes, "GlobalPrecipGS", "d2h_GS.tif"))
 
 # Load assignR known-origin dataset. -------------------------------------------
 assignR_Hobson <- assignR::knownOrig$samples %>%
@@ -39,14 +35,10 @@ assignR_Hobson_sf <- assignR_Hobson_VSMOW %>%
 
 assignR_Hobson2 <- dplyr::mutate(
   assignR_Hobson_VSMOW,
-  iso_augsep = raster::extract(iso_augsep, assignR_Hobson_sf) ,
   iso_GS = raster::extract(iso_GS, assignR_Hobson_sf)
 )
 
-# Exploratory plots.
-assignR_Hobson2 %>%
-  ggplot() +
-  geom_point(aes(x=iso_augsep, y = d2H.1))
+# Exploratory plot.
 assignR_Hobson2 %>%
   ggplot() +
   geom_point(aes(x=iso_GS, y = d2H.1))
@@ -93,6 +85,7 @@ assignR_Hobson3 <- assignR_Hobson2 %>%
   )) %>%
   left_join(., Hobson2012_SI1, by = c("Hobson2012_name" = "Scientific.Name")) %>%
   dplyr::mutate(Foraging.Substrate = factor(Foraging.Substrate, levels = c("Non-Ground", "Ground")))
+saveRDS(assignR_Hobson3, file = file.path(wd$bin, "assignR_Hobson3.rds"))
 
 # Fit mixed models as in Hobson 2012. ------------------------------------------
 
@@ -143,11 +136,33 @@ saveRDS(sd_resids, file = file.path(wd$bin, "transferFunctionResids.rds"))
 
 
 # Transform isoscape ------------------------------------------------------
-precipToFeather <- function(x) {
+precipToKeratin <- function(x) {
   stopifnot(exists("params"))
   y <- ( x*params$slope) + params$intercept
   return(y)
 }
 
-featherIso <- raster::calc(iso_augsep, fun =  precipToFeather)
-writeRaster(featherIso, filename = file.path(wd$bin, "featherIsoscape.tif"))
+## Feather isoscape ----
+featherIso <- raster::calc(iso_augsep, fun =  precipToKeratin)
+writeRaster(featherIso, filename = file.path(wd$bin, "featherIsoscape.tif"), overwrite = T)
+
+## Claw isoscapes ----
+# ### Growing season----
+# iso_GS     <- raster::raster( file.path(wd$bin, "iso_GS.tif") )
+# clawIso <- raster::calc(iso_GS, fun =  precipToKeratin)
+# writeRaster(clawIso, filename = file.path(wd$bin, "keratin_GS_isoscape.tif"), overwrite = T)
+
+### Sep-Dec ----
+iso_sepdec    <- raster::raster( file.path(wd$bin, "iso_sepdec.tif") )
+keratin_sepdec <- raster::calc(iso_sepdec, fun =  precipToKeratin)
+writeRaster(keratin_sepdec, filename = file.path(wd$bin, "keratin_sepdec_isoscape.tif"), overwrite = T)
+
+### Oct-Jan ----
+iso_octjan    <- raster::raster( file.path(wd$bin, "iso_octjan.tif") )
+keratin_octjan <- raster::calc(iso_octjan, fun =  precipToKeratin)
+writeRaster(keratin_octjan, filename = file.path(wd$bin, "keratin_octjan_isoscape.tif"), overwrite = T)
+
+### Nov-Feb ----
+iso_novfeb    <- raster::raster( file.path(wd$bin, "iso_novfeb.tif") )
+keratin_novfeb <- raster::calc(iso_novfeb, fun =  precipToKeratin)
+writeRaster(keratin_novfeb, filename = file.path(wd$bin, "keratin_novfeb_isoscape.tif"), overwrite = T)
