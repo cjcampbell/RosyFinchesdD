@@ -83,22 +83,6 @@ writeRaster(
   filename = file.path(wd$out, "GCRF_normalizedProbabilityMaps.grd"),
   overwrite = T)
 
-# # Also calculate probability quantiles.
-# maps_quantile_stack <- lapply(1:nlayers(maps_cropped), function(i){
-#   isocat::makeQuantileSurfaces(maps_cropped[[i]])
-# }) %>%
-#   raster::stack()
-# names(maps_quantile_stack) <- paste0(names(maps_cropped), "_quantile")
-# #writeRaster(maps_quantile_stack, filename = file.path(wd$bin, "quantileProbabilityMaps.grd"), overwrite = TRUE)
-# writeRaster(
-#   maps_quantile_stack[[unlist(mydata[mydata$Species == "BLRF", "ID"])]],
-#   filename = file.path(wd$out, "BLRF_quantileProbabilityMaps.grd"),
-#   overwrite = T)
-# writeRaster(
-#   maps_quantile_stack[[unlist(mydata[mydata$Species == "GCRF", "ID"])]],
-#   filename = file.path(wd$out, "GCRF_quantileProbabilityMaps.grd"),
-#   overwrite = T)
-
 # Make odds ratios.
 maps_odds_stack <- lapply(1:nlayers(maps_cropped), function(i){
   isocat::makeOddsSurfaces(maps_cropped[[i]])
