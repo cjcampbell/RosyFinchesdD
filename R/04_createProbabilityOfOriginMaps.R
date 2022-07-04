@@ -50,7 +50,7 @@ lapply(c("Feather", "Claw"), function(mySampleType){
         } else if(df[i, "date"] >= "2020-04-01") {
           myIsoscape <- keratin_novfeb
           myIsoscape_sd <- keratin_novfeb_se
-        } else stop("dat is note parsing correctly")
+        } else stop("date is not parsing correctly")
 
         myMap <- isocat::isotopeAssignmentModel(
           ID               = df[i, "ID"],
