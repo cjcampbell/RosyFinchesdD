@@ -133,7 +133,9 @@ if(reload_ebird_abundancemaps == TRUE){
     # Load eBird seasonal abundance estimates.
     if(speciesCode == "BLRF") ebirdCode <- "bkrfin"
     if(speciesCode == "GCRF") ebirdCode <- "gcrfin"
-    abundancePath <- file.path(wd$data, paste0(ebirdCode, "_breedingSeasonalAbundance.tif"))
+    mypath <- grep(list.dirs(wd$abundance, recursive = F), pattern = ebirdCode, value = T)
+
+    abundancePath <- file.path(mypath, paste0(ebirdCode, "_breedingSeasonalAbundance.tif"))
     if(!file.exists(abundancePath)) {
       speciesCode_path <- ebirdst_download(species = ebirdCode, tifs_only = TRUE, force= FALSE)
       speciesCode_abund <- load_raster("abundance_seasonal", path = speciesCode_path)
