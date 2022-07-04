@@ -35,13 +35,13 @@ assignR_Hobson_sf <- assignR_Hobson_VSMOW %>%
 
 assignR_Hobson2 <- dplyr::mutate(
   assignR_Hobson_VSMOW,
-  iso_GS = raster::extract(iso_GS, assignR_Hobson_sf)
+  iso_GS_WGS84 = raster::extract(iso_GS_WGS84, assignR_Hobson_sf)
 )
 
 # Exploratory plot.
 assignR_Hobson2 %>%
   ggplot() +
-  geom_point(aes(x=iso_GS, y = d2H.1))
+  geom_point(aes(x=iso_GS_WGS84, y = d2H.1))
 
 
 # Bring in guild predictors from Hobson 2012 SI --------------------------------
@@ -89,11 +89,11 @@ saveRDS(assignR_Hobson3, file = file.path(wd$bin, "assignR_Hobson3.rds"))
 
 # Fit mixed models as in Hobson 2012. ------------------------------------------
 
-m1 <- lm(d2H.1~iso_GS + Foraging.Substrate + Migratory + Foraging.Substrate*Migratory,
+m1 <- lm(d2H.1~iso_GS_WGS84 + Foraging.Substrate + Migratory + Foraging.Substrate*Migratory,
      data = assignR_Hobson3 )
 summary(m1)
 AIC(m1)
-(a <- sjPlot::plot_model(m1, type = "pred", terms = c("iso_GS", "Foraging.Substrate", "Migratory")))
+(a <- sjPlot::plot_model(m1, type = "pred", terms = c("iso_GS_WGS84", "Foraging.Substrate", "Migratory")))
 
 # ForagingSubstrateGround == 1
 # MigratoryShort distance == 1
@@ -111,7 +111,7 @@ groundShort <- assignR_Hobson3 %>%
   dplyr::filter(Foraging.Substrate == "Ground", Migratory == "Short distance")
 groundShort %>%
   ggplot() +
-  aes(x=iso_GS, y=d2H.1, color=Migratory, shape = Foraging.Substrate) +
+  aes(x=iso_GS_WGS84, y=d2H.1, color=Migratory, shape = Foraging.Substrate) +
   geom_point() +
   geom_abline(slope = slope, intercept = intercept)
 
@@ -145,12 +145,6 @@ precipToKeratin <- function(x) {
 ## Feather isoscape ----
 featherIso <- raster::calc(iso_augsep, fun =  precipToKeratin)
 writeRaster(featherIso, filename = file.path(wd$bin, "featherIsoscape.tif"), overwrite = T)
-
-## Claw isoscapes ----
-# ### Growing season----
-# iso_GS     <- raster::raster( file.path(wd$bin, "iso_GS.tif") )
-# clawIso <- raster::calc(iso_GS, fun =  precipToKeratin)
-# writeRaster(clawIso, filename = file.path(wd$bin, "keratin_GS_isoscape.tif"), overwrite = T)
 
 ### Sep-Dec ----
 iso_sepdec    <- raster::raster( file.path(wd$bin, "iso_sepdec.tif") )
