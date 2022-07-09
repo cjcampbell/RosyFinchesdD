@@ -77,11 +77,13 @@ if(reload_isoscapes == TRUE){
   # Sys.unsetenv("GITHUB_PAT")
   # devtools::install_github("cjcampbell/isocat", upgrade = "never")
 
+
   projectExtendCropRaster <- function(rast) {
-   rast %>%
-      raster::projectRaster(., crs = myCRS) %>%
-      raster::extend( ., my_extent_aea ) %>%
-      raster::crop(   ., my_extent_aea )
+    rast %>%
+      terra::rast() %>%
+      terra::project(., myCRS) %>%
+      terra::extend(., my_extent_aea) %>%
+      terra::crop(., my_extent_aea)
   }
 
   makeSubsettedSurfaces <- function(monthVector, rastName) {
@@ -135,20 +137,19 @@ if(reload_ebird_abundancemaps == TRUE){
     if(speciesCode == "GCRF") ebirdCode <- "gcrfin"
     mypath <- grep(list.dirs(wd$abundance, recursive = F), pattern = ebirdCode, value = T)
 
-    abundancePath <- file.path(mypath, paste0(ebirdCode, "_breedingSeasonalAbundance.tif"))
-    if(!file.exists(abundancePath)) {
-      speciesCode_path <- ebirdst_download(species = ebirdCode, tifs_only = TRUE, force= FALSE)
-      speciesCode_abund <- load_raster("abundance_seasonal", path = speciesCode_path)
-      speciesCode_abund2 <- raster::crop(speciesCode_abund, extent(c(-20015109, 597136.6, 0e7, 10007555)))       # Crop to approximate area of northwestern North America for quicker reprojection
-      speciesCode_aea1 <- projectRaster(speciesCode_abund2[[1]], crs = myCRS)
-      speciesCode_aea <- raster::crop(speciesCode_aea1, my_extent_aea)
-      writeRaster(speciesCode_aea, filename = file.path(wd$data, paste0(ebirdCode, "_breedingSeasonalAbundance.tif")), overwrite = T)
-    }
+    # Find maximum abundance given year-round range.
+    maxAbund <- file.path(mypath, "abundance_seasonal") %>%
+      list.files(pattern = "lr", full.names = T) %>%
+      terra::rast() %>%
+      terra::app(., max)
+
+    maxAbund1       <- terra::project(maxAbund, myCRS)
+    maxAbund_aea    <- terra::crop(maxAbund1, my_extent_aea)
 
     # Convert areas with non-zero expected abundance to points.
     # Draw a convex hull around said points.
     # Buffer by 100km.
-    r <- raster::raster(abundancePath)
+    r <- raster::raster(maxAbund_aea)
     r[r==0] <- NA
     abun_df <- raster::rasterToPoints(r) %>%
       as.data.frame()
@@ -167,7 +168,7 @@ if(reload_ebird_abundancemaps == TRUE){
       readRDS()
 
     # Convert buffered rangemaps to rasters with appropriate
-    ex_rast <- raster::raster( file.path(wd$bin, "augsep_iso.tif"))
+    ex_rast <- raster::raster( file.path(wd$bin, "iso_augsep.tif"))
     ex_rast[] <- 1
     range_raster <- raster::mask(
       ex_rast,

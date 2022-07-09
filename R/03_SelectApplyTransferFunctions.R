@@ -143,8 +143,10 @@ precipToKeratin <- function(x) {
 }
 
 ## Feather isoscape ----
-featherIso <- raster::calc(iso_augsep, fun =  precipToKeratin)
-writeRaster(featherIso, filename = file.path(wd$bin, "featherIsoscape.tif"), overwrite = T)
+# August-September surfaces
+iso_augsep    <- raster::raster( file.path(wd$bin, "iso_augsep.tif") )
+keratin_augsep <- raster::calc(iso_augsep, fun =  precipToKeratin)
+writeRaster(keratin_augsep, filename = file.path(wd$bin, "keratin_augsep_isoscape.tif"), overwrite = T)
 
 ### Sep-Dec ----
 iso_sepdec    <- raster::raster( file.path(wd$bin, "iso_sepdec.tif") )

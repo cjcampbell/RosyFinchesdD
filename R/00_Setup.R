@@ -45,8 +45,8 @@ invisible({
 # Define extent of spatial analysis.
 # Unit == meters
 my_extent_aea <- raster::extent(
-  -42e5, 12e5,
-  -13e5, 32e5
+  -42e5, 18e5,
+  -30e5, 32e5
 )
 
 # CRS for aea projection:
