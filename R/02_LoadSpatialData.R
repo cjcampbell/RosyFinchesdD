@@ -57,7 +57,8 @@ if(download_GADM == TRUE){
   # Also create maps of USA and CAN states for detailed plotting.
   USA_1 <- raster::getData('GADM', path = wd$GADM, country='USA', level=1)
   CAN_1 <- raster::getData('GADM', path = wd$GADM, country='CAN', level=1)
-  states <- raster::bind( USA_1, CAN_1) %>%
+  MEX_1 <- raster::getData('GADM', path = wd$GADM, country='MEX', level=1)
+  states <- raster::bind( USA_1, CAN_1, MEX_1) %>%
     sf::st_as_sf(.) %>%
     st_transform(crs = myCRS) %>%
     st_crop(., my_extent_aea) %>%
@@ -72,18 +73,53 @@ if(download_GADM == TRUE){
 if(reload_isoscapes == TRUE){
 
   message("reloading isoscapes...")
-
-  # This code requires an utd version of isocat for the `makeMultiMonthIsoscape` function.
-  # Sys.unsetenv("GITHUB_PAT")
-  # devtools::install_github("cjcampbell/isocat", upgrade = "never")
-
-
   projectExtendCropRaster <- function(rast) {
     rast %>%
       terra::rast() %>%
       terra::project(., myCRS) %>%
       terra::extend(., my_extent_aea) %>%
       terra::crop(., my_extent_aea)
+  }
+
+
+  makeMultiMonthIsoscape <- function(iso_stack, iso_se_stack, precip_stack) {
+    stopifnot(
+      class(iso_stack) == "RasterStack" | class(iso_stack) == "RasterBrick"  ,
+      class(iso_se_stack) == "RasterStack" | class(iso_se_stack) == "RasterBrick",
+      is.null(precip_stack) | class(precip_stack) == "RasterStack"| class(precip_stack) == "RasterBrick",
+      raster::nlayers(iso_stack) == raster::nlayers(iso_se_stack),
+      is.null(precip_stack) | raster::nlayers(iso_stack) == raster::nlayers(precip_stack),
+      raster::compareRaster(iso_stack, iso_se_stack, stopiffalse = F)
+    )
+
+    if (is.null(precip_stack)) {
+      precip_stack <- iso_stack
+      precip_stack[] <- 1/nlayers(iso_stack)
+    } else if (
+      !raster::compareRaster(
+        precip_stack, iso_stack[[1]], values = F, stopiffalse = F)
+    ) { precip_stack <- terra::resample(precip_stack, iso_stack) }
+
+    stopifnot(
+      "Rasterstacks are not compatible. Use raster::compareRaster to examine\n  the differences between iso_stack and precip_stack." =
+        raster::compareRaster(precip_stack, iso_stack, values = F)
+    )
+
+    # Weighted mean.
+    step1 <- lapply(1:nlayers(iso_stack), function(i) {
+      iso_stack[[i]] * precip_stack[[i]]
+    }) %>%
+      raster::stack()
+    step2 <- raster::calc(step1, sum)
+    mean_iso <- step2 / raster::calc(precip_stack, sum)
+
+    # Isoscape error.
+    iso_se <- raster::overlay(iso_se_stack, fun = function(...) {
+      sqrt(sum(...^2))
+    })
+
+    return(list(mean_iso = mean_iso, iso_se = iso_se))
+
   }
 
   makeSubsettedSurfaces <- function(monthVector, rastName) {
@@ -95,12 +131,17 @@ if(reload_isoscapes == TRUE){
       rast_stack <- raster::stack(rast_stack, file.path(wd$isoscapes,"GlobalPrecip", paste0("d2h_", i, ".tif")))
       rast_se_stack <- raster::stack(rast_se_stack, file.path(wd$isoscapes,"GlobalPrecip", paste0("d2h_se_", i, ".tif")))
       rast_precip <- raster::stack(rast_precip, file.path(wd$precip, paste0("wc2.1_2.5m_prec_", i, ".tif")))
-      }
-    rast_wgs84 <- isocat::makeMultiMonthIsoscape(rast_stack, rast_se_stack, rast_precip)
+    }
+    rast_stack    <- raster::crop(rast_stack, extent(-180,0,0,90))
+    rast_se_stack <- raster::crop(rast_se_stack, extent(-180,0,0,90))
+    rast_precip   <- raster::crop(rast_precip, extent(-180,0,0,90))
+
+    rast_wgs84 <- makeMultiMonthIsoscape(rast_stack, rast_se_stack, rast_precip)
     outrast <- lapply(rast_wgs84, projectExtendCropRaster)
     writeRaster(outrast[[1]], filename = file.path(wd$bin, paste0("iso_", rastName, ".tif")), overwrite = T)
     writeRaster(outrast[[2]], filename = file.path(wd$bin, paste0("iso_se_", rastName, ".tif")), overwrite = T)
   }
+
 
   # August-September surfaces
   makeSubsettedSurfaces(monthVector = 8:9, rastName = "augsep")
@@ -126,7 +167,6 @@ if(reload_isoscapes == TRUE){
 
 # Load ebird abundance maps -----------------------------------------------------
 if(reload_ebird_abundancemaps == TRUE){
-  load(file.path(wd$bin, "my_isoscapes.RData"), verbose = TRUE)
   NoAm_boundary_aea <- readRDS( file.path(wd$bin, "NoAm_boundary_aea.rds") )
 
   # Function to load maps, convert to sf, reproject, convert to raster objects.
@@ -167,7 +207,7 @@ if(reload_ebird_abundancemaps == TRUE){
       grep(pattern = paste0(speciesCode, "_bufferedConvexHull.rds"), value = T) %>%
       readRDS()
 
-    # Convert buffered rangemaps to rasters with appropriate
+    # Convert buffered rangemaps to rasters
     ex_rast <- raster::raster( file.path(wd$bin, "iso_augsep.tif"))
     ex_rast[] <- 1
     range_raster <- raster::mask(

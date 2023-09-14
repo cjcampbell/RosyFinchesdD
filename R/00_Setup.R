@@ -11,6 +11,7 @@ library(sf)
 # Load libraries relied on for a few analyses.
 library(assignR)
 library(chron)
+library(data.table)
 library(geosphere)
 library(ggmap)
 library(ggplot2)
