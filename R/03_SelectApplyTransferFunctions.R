@@ -141,6 +141,13 @@ precipToKeratin <- function(x) {
   y <- ( x*params$slope) + params$intercept
   return(y)
 }
+projectExtendCropRaster <- function(rast) {
+  rast %>%
+    terra::rast() %>%
+    terra::project(., myCRS) %>%
+    terra::extend(., my_extent_aea) %>%
+    terra::crop(., my_extent_aea)
+}
 
 ## Feather isoscape ----
 # August-September surfaces
@@ -162,3 +169,25 @@ writeRaster(keratin_octjan, filename = file.path(wd$bin, "keratin_octjan_isoscap
 iso_novfeb    <- raster::raster( file.path(wd$bin, "iso_novfeb.tif") )
 keratin_novfeb <- raster::calc(iso_novfeb, fun =  precipToKeratin)
 writeRaster(keratin_novfeb, filename = file.path(wd$bin, "keratin_novfeb_isoscape.tif"), overwrite = T)
+
+ma <- raster::raster(file.path(wd$isoscapes, "GlobalPrecip", "d2h_MA.tif"))
+keratin_ma <- ma %>%
+  terra::crop(., extent(-180,0,0,90)) %>%
+  projectExtendCropRaster %>%
+  raster::raster() %>%
+  raster::calc(., fun =  precipToKeratin)
+ma_se <- raster::raster(file.path(wd$isoscapes, "GlobalPrecip", "d2h_se_MA.tif")) %>%
+  terra::crop(., extent(-180,0,0,90)) %>%
+  projectExtendCropRaster %>%
+  raster::raster()
+
+gs <- raster::raster(file.path(wd$isoscapes, "GlobalPrecipGS", "d2h_GS.tif"))
+keratin_gs <- gs %>%
+  terra::crop(., extent(-180,0,0,90)) %>%
+  projectExtendCropRaster %>%
+  raster::raster() %>%
+  raster::calc(., fun =  precipToKeratin)
+gs_se <- raster::raster(file.path(wd$isoscapes, "GlobalPrecipGS", "d2h_se_GS.tif")) %>%
+  terra::crop(., extent(-180,0,0,90)) %>%
+  projectExtendCropRaster %>%
+  raster::raster()
