@@ -16,3 +16,4 @@ ms/
 *.pdf
 figs/
 R/*presentationFigs.R
+R/archive/
