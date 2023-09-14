@@ -12,3 +12,6 @@ out/OddsProbabilityMaps*
 out/normalizedProbabilityMaps*
 R/test*
 figs/example*
+ms/
+*.pdf
+figs/
