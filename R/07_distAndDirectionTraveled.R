@@ -140,3 +140,32 @@ p_direction_GCRF <- minDistDeets %>%
 ggarrange(p_dist_BLRF,p_direction_BLRF, p_dist_GCRF,p_direction_GCRF, ncol = 2, nrow = 2, labels = LETTERS) %>%
   ggsave(., filename = file.path(wd$figs, "distDIR-feathers_species.png"), width = 6, height = 6)
 
+# Summarize distances traveled. ---------------
+library(ggridges)
+if(!file.exists(file.path(wd$bin, "distDir_ests.csv"))) {
+  set.seed(42)
+  distDir_ests <- mydat_distDir0 %>%
+    # dplyr::filter(
+    #   Species == "BLRF",
+    #   sampleType == "Feather"
+    # ) %>%
+    left_join(., mydata_clustered) %>%
+    dplyr::filter(
+      # Species == "BLRF",
+      # sampleType == "Feather",
+      #ID %in% c("X2441.20646f", "X2441.20654f", "X2441.20656f", "X2441.20663f", "X2441.20672f", "X2441.20673f"),
+      !is.na(combo1)
+    ) %>%
+    group_by(ID) %>%
+    sample_n(size = 10000, weight = combo1, replace = T) %>%
+    dplyr::summarize(
+      dist_05 = quantile(dist_km, 0.05),
+      dist_25 = quantile(dist_km, 0.25),
+      dist_50 = quantile(dist_km, 0.50),
+      dist_75 = quantile(dist_km, 0.75),
+      dist_95 = quantile(dist_km, 0.95),
+      dir_mean = mean(theta_from_site)
+    )
+  fwrite(distDir_ests, file = file.path(wd$bin, "distDir_ests.csv"), row.names = F)
+}
+if(!exists("distDir_ests")) distDir_ests <- fread( file.path(wd$bin, "distDir_ests.csv"))
