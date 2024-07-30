@@ -293,3 +293,40 @@ for(i in 1:nrow(mydata)) {
   ggsave(p6, file = file.path(wd$figs,  paste0(myID, "_combo_OR_binary.png" ) ))
 }
 
+
+
+# Quickly visualize abundance maps by states. -----------------------------
+
+# Do this only for black rosy-finch
+
+## States ----
+states <- readRDS(file.path(wd$bin, "states.rds")) %>%
+  vect()
+ebirdCode <- "bkrfin"
+bl_abund <- list.files(wd$bin, pattern = myres, full.names = T) %>%
+    grep(pattern = ebirdCode, value = T) %>%
+    grep(pattern = "abundance_seasonal_mean", value = T) %>%
+    grep(pattern = myres, value = T) %>%
+    terra::rast() %>%
+    {.$breeding}
+
+state_prop <- terra::extract(bl_abund, states, fun = "sum", na.rm = T, ID = T) %>%
+  data.frame(., NAME_1 = states$NAME_1) %>%
+  arrange(desc(breeding)) %>%
+  dplyr::filter(breeding > 0) %>%
+  dplyr::mutate(prop = round(breeding/sum(breeding)*100))
+state_prop
+
+## BRC -----
+bcr <- list.files(file.path(wd$data, "bcr_shp"), pattern = "BCR.shp$", full.names = T) %>%
+  st_read() %>%
+  st_transform(crs = myCRS) %>%
+  st_simplify(dTolerance = 5000) %>%
+  vect()
+
+brc_prop <- terra::extract(bl_abund, bcr, fun = "sum", na.rm = T, ID = T) %>%
+  data.frame(., BCRName = bcr$BCRName) %>%
+  arrange(desc(breeding)) %>%
+  dplyr::filter(breeding > 0) %>%
+  dplyr::mutate(prop = round(breeding/sum(breeding)*100))
+brc_prop
