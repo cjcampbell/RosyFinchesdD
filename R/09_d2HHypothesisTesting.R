@@ -32,6 +32,10 @@ MuMIn::dredge(m1)
 sjPlot::plot_model(m1)
 
 
+df_female <- dplyr::filter(df2,  Species == "BLRF", Sex == "Female")
+df_male <- dplyr::filter(df2,  Species == "BLRF", Sex == "Male")
+t.test(df_female$d2H, df_male$d2H)
+
 
 # Add in map results ------------------------------------------------------
 
