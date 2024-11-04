@@ -5,8 +5,8 @@
 data/
 bin/*
 !transferFunction*
-!iso_augsep.tif
-!iso_se_augsep.tif
+!/bin/keratin_augsep_isoscape.tif
+!/bin/iso_se_augsep.tif
 docs/
 .Rprofile
 out/continuous_maps/
@@ -17,6 +17,10 @@ R/test*
 figs/example*
 ms/
 *.pdf
-figs/
+figs/*
+!/figs/LikelyOrigins_distDir4.png
+!figs/LikelyOrigins_GCRF.png
+!figs/distDIR-feathers_species.png
+!figs/SI_*
 R/*presentationFigs.R
 R/archive/
