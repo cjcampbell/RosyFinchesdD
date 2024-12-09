@@ -22,5 +22,6 @@ figs/*
 !figs/LikelyOrigins_GCRF.png
 !figs/distDIR-feathers_species.png
 !figs/SI_*
+!figs/fig_2.png
 R/*presentationFigs.R
 R/archive/

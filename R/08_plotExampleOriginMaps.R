@@ -187,5 +187,5 @@ p2 <- cowplot::ggdraw() +
   cowplot::draw_label("F", x = 0.0, y = 2/3, hjust = 0, vjust = 0.5, size = 10)
 
 ggarrange(p1, p2, ncol = 2) %>%
-  ggsave(filename = file.path(wd$figs, paste0("median_combo3.png")), width = 6, height = 4)
+  ggsave(filename = file.path(wd$figs, paste0("fig_2.png")), width = 6, height = 4)
 
