@@ -7,6 +7,7 @@ bin/*
 !transferFunction*
 !/bin/keratin_augsep_isoscape.tif
 !/bin/iso_se_augsep.tif
+!/bin/assignR_Hobson3.rds
 docs/
 .Rprofile
 out/continuous_maps/
