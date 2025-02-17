@@ -119,6 +119,31 @@ params <- list(slope=slope, intercept=intercept)
 saveRDS(params, file = file.path(wd$bin, "transferFunctionParams.rds"))
 
 
+## Export parameter estimates -----
+
+# Two methods of determining intercepts:
+coef(m1)[
+  names(coef(m1)) %in% c(
+    "(Intercept)",
+    "Foraging.SubstrateGround",
+    "MigratoryShort distance",
+    "Foraging.SubstrateGround:MigratoryShort distance")
+] %>%
+  sum()
+predict(m1, data.frame(iso_GS_WGS84 = 0, Foraging.Substrate = "Ground", Migratory = "Short distance"))
+
+
+resultsTab <- lapply(c("Ground", "Non-Ground"), function(foragingSub) {
+  lapply(c("Neotropical", "Short distance", "Resident"), function(migType) {
+
+    int <- predict(m1, data.frame(iso_GS_WGS84 = 0, Foraging.Substrate = foragingSub, Migratory = migType))
+    data.frame(Foraging.Substrate = foragingSub, Migratory = migType, slope = coef(m1)[2], intercept = int)
+
+  }) %>% bind_rows
+}) %>% bind_rows()
+
+data.table::fwrite(resultsTab, "out/transferFunctions_Hobson_updatedRefScale.csv", row.names = F)
+
 
 # Estimate sd  of resids------------------------------------------------------------
 calculateResidual <- function(x,y, slope = slope, intercept = intercept) {
